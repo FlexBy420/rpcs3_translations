@@ -136,7 +136,7 @@
     <message>
       <location filename="./rpcs3/rpcs3qt/localized.cpp" line="85"/>
       <source>1080</source>
-      <translation type="unfinished">1080</translation>
+      <translation>1080</translation>
     </message>
     <message>
       <location filename="./rpcs3/rpcs3qt/localized.cpp" line="86"/>
