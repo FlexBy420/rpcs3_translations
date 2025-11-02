@@ -8,6 +8,9 @@ on:
     paths:
       - 'translations/*.ts'
 
+permissions:
+  contents: write
+
 jobs:
   generate-qm:
     runs-on: ubuntu-24.04
@@ -17,6 +20,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: main
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install Qt Tools
         run: |
@@ -30,16 +34,15 @@ jobs:
           if [ -z "$LRELEASE_PATH" ]; then
             echo "Error: lrelease not found!"
             exit 1
-          else
-            echo "lrelease found at: $LRELEASE_PATH"
-            for ts_file in translations/*.ts; do
-              qm_file="qm/$(basename "$ts_file" .ts).qm"
-              "$LRELEASE_PATH" "$ts_file" -nounfinished -removeidentical -qm "$qm_file"
-            done
           fi
+          echo "lrelease found at: $LRELEASE_PATH"
+          for ts_file in translations/*.ts; do
+            qm_file="qm/$(basename "$ts_file" .ts).qm"
+            "$LRELEASE_PATH" "$ts_file" -nounfinished -removeidentical -qm "$qm_file"
+          done
 
       - name: Upload Translations as Artifact
-        uses: actions/upload-artifact@main
+        uses: actions/upload-artifact@v4
         with:
           name: RPCS3-languages
           path: qm/
@@ -60,10 +63,17 @@ jobs:
             echo "no_changes=false" >> $GITHUB_ENV
           fi
 
+      - name: Get current date
+        if: env.no_changes == 'false'
+        id: date
+        run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+
       - name: Package .qm files
         if: env.no_changes == 'false'
         run: |
-          zip -r RPCS3-languages.zip qm/
+          cd qm
+          zip -r ../RPCS3-languages.zip ./*
+          cd ..
 
       - name: Create Release
         if: env.no_changes == 'false'
@@ -72,9 +82,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: release-${{ github.run_id }}-${{ github.run_number }}
-          release_name: "Translation Release - $(date +'%Y-%m-%d')"
-          body: "Automatically generated translation release for $(date +'%Y-%m-%d')."
+          tag_name: ${{ steps.date.outputs.date }}
+          release_name: "Translation Release - ${{ steps.date.outputs.date }}"
+          body: "Automatically generated translation release for ${{ steps.date.outputs.date }}."
           draft: false
           prerelease: false
 
