@@ -17628,7 +17628,7 @@ Zatrzymać emulator teraz?</translation>
     <message>
         <location filename="rpcs3/rpcs3qt/welcome_dialog.ui" line="238"/>
         <source>Continue</source>
-        <translation>Kontynuuj</translation>
+        <translation>DUPA</translation>
     </message>
     <message>
         <location filename="rpcs3/rpcs3qt/welcome_dialog.ui" line="248"/>
