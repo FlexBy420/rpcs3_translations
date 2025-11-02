@@ -25,6 +25,7 @@ jobs:
 
       - name: Generate .qm files
         run: |
+          mkdir -p qm
           LRELEASE_PATH=$(find /usr -name lrelease -type f 2>/dev/null | head -n 1)
           if [ -z "$LRELEASE_PATH" ]; then
             echo "Error: lrelease not found!"
@@ -33,21 +34,57 @@ jobs:
             echo "lrelease found at: $LRELEASE_PATH"
             for ts_file in translations/*.ts; do
               qm_file="qm/$(basename "$ts_file" .ts).qm"
-              "$LRELEASE_PATH" "$ts_file" -nounfinished -qm "$qm_file"
+              "$LRELEASE_PATH" "$ts_file" -nounfinished -removeidentical -qm "$qm_file"
             done
           fi
 
-      - name: Commit and push .qm files
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add qm/
-          git commit -m "Automatically generated .qm files from .ts files"
-          git push
-
-      - name: Upload Translations
+      - name: Upload Translations as Artifact
         uses: actions/upload-artifact@main
         with:
           name: RPCS3-languages
           path: qm/
           compression-level: 1
+
+      - name: Commit and push .qm files
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add qm/
+          if git diff --cached --quiet; then
+            echo "No changes in .qm files detected."
+            echo "no_changes=true" >> $GITHUB_ENV
+          else
+            git commit -m "Automatically generated .qm files from .ts files"
+            git push origin main
+            echo "no_changes=false" >> $GITHUB_ENV
+          fi
+
+      - name: Package .qm files
+        if: env.no_changes == 'false'
+        run: |
+          zip -r RPCS3-languages.zip qm/
+
+      - name: Create Release
+        if: env.no_changes == 'false'
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: release-${{ github.run_id }}-${{ github.run_number }}
+          release_name: "Translation Release - $(date +'%Y-%m-%d')"
+          body: "Automatically generated translation release for $(date +'%Y-%m-%d')."
+          draft: false
+          prerelease: false
+
+      - name: Upload .qm files to release
+        if: env.no_changes == 'false'
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: RPCS3-languages.zip
+          asset_name: RPCS3-languages.zip
+          asset_content_type: application/zip
